@@ -137,6 +137,7 @@ class ScrewNetAxisKeyboardLM(ThreeDScene):
         #   p* := closest point to origin on axis, constrained p*·l = 0
         #   m := p* x l  (=> l·m = 0 automatically)
         # ------------------------------------------------------------
+        
         yaw = ValueTracker(0.0)       # rotate around world Z
         pitch = ValueTracker(0.0)     # tilt up/down
         alpha = ValueTracker(0.0)     # p* coordinate along u0
@@ -156,34 +157,13 @@ class ScrewNetAxisKeyboardLM(ThreeDScene):
         # ------------------------------------------------------------
         # Key polling (pyglet)
         # ------------------------------------------------------------
+        
         try:
             from pyglet.window import key as pyg_key
         except Exception:
             pyg_key = None
 
         controller = Mobject().set_opacity(0.0)
-
-        def compute_l_u0_v0_pstar_m():
-            y = yaw.get_value()
-            p = pitch.get_value()
-
-            cy, sy = np.cos(y), np.sin(y)
-            cp, sp = np.cos(p), np.sin(p)
-
-            # unit direction l from yaw/pitch
-            l = np.array([cy * cp, sy * cp, sp], dtype=float)
-
-            # basis on plane ⟂ l
-            u0, v0 = perp_basis(l, u_ref=np.array([1.0, 0.0, 0.0]))
-
-            # p* forced to be ⟂ l: p* = alpha u0 + beta v0
-            a = alpha.get_value()
-            b = beta.get_value()
-            p_star = a * u0 + b * v0
-
-            # Plücker moment
-            m = np.cross(p_star, l)  # ensures l·m=0
-            return l, u0, v0, p_star, m
 
         def controller_updater(mob: Mobject, dt: float):
             if pyg_key is None:
@@ -243,7 +223,6 @@ class ScrewNetAxisKeyboardLM(ThreeDScene):
         controller.add_updater(controller_updater)
         self.add(controller)
 
-
         # yaw, pitch, alpha, beta 만든 직후에 배치하세요.
 
         axis_cache = {"l": None, "u0": None, "v0": None, "p_star": None, "m": None}
@@ -283,7 +262,6 @@ class ScrewNetAxisKeyboardLM(ThreeDScene):
         axis_line = always_redraw(axis_line_mobj)
         self.add(axis_line)
 
-
         # ------------------------------------------------------------
         # Visualize axis (red arrow) from live (l,m)
         # ------------------------------------------------------------
@@ -306,6 +284,7 @@ class ScrewNetAxisKeyboardLM(ThreeDScene):
         # Triad at screw-axis "origin" p* (closest point to world origin)
         # Frame axes: x=u0, y=v0, z=l
         # ------------------------------------------------------------
+
         def axis_triad_mobj():
             l, u0, v0, p_star, m = axis_state()
             R_axis = np.column_stack([u0, v0, l])  # 3x3, right-handed orthonormal
@@ -318,6 +297,7 @@ class ScrewNetAxisKeyboardLM(ThreeDScene):
         # ------------------------------------------------------------
         # Triad at world origin (0,0,0) with world-aligned axes
         # ------------------------------------------------------------
+
         origin_triad = pose_frame_mobject(
             pos=np.array([0.0, 0.0, 0.0]),
             R=np.eye(3),
@@ -327,27 +307,10 @@ class ScrewNetAxisKeyboardLM(ThreeDScene):
         )
         self.add(origin_triad)
 
-
-        # ------------------------------------------------------------
-        # Triad that follows the mouse (world-aligned)
-        # ------------------------------------------------------------
-        # mouse_triad = always_redraw(
-        #     lambda: pose_frame_mobject(
-        #         pos=self.mouse_point.get_center(),  # mouse position
-        #         R=np.eye(3),                        # world-aligned axes
-        #         axis_len=0.7,
-        #         stroke_width=7,
-        #         opacity=0.9
-        #     )
-        # )
-        # self.add(mouse_triad)
-
-
-
-
         # ------------------------------------------------------------
         # Red ball following the mouse pointer (world position)
         # ------------------------------------------------------------
+        
         red_ball = Sphere(radius=0.12, resolution=(18, 36))
         red_ball.set_color(RED)
         red_ball.set_opacity(0.9)
@@ -359,6 +322,7 @@ class ScrewNetAxisKeyboardLM(ThreeDScene):
         # Circle manifold (revolute only): slice of the cylinder at fixed u
         # C(v) = p* + u_slice*l + r(cos v u0 + sin v v0)
         # ------------------------------------------------------------
+        
         r_cir = 2.0
         u_slice = ValueTracker(0.0)   # 원이 축을 따라 어디에 위치할지 (원하면 키로 움직이게 확장 가능)
         self.add(u_slice)
@@ -387,6 +351,7 @@ class ScrewNetAxisKeyboardLM(ThreeDScene):
         # ------------------------------------------------------------
         # Unified guiding vector field for all modes (1~4)
         # ------------------------------------------------------------
+
         k_t = 2.0      # tangential gain
         k_r = 4.0      # radial attraction gain
         k_u = 3.0      # u-slice attraction (for revolute)
@@ -399,8 +364,8 @@ class ScrewNetAxisKeyboardLM(ThreeDScene):
         # 공통 샘플: axis 좌표계에서 (u, v, dr)
         u_vals  = np.linspace(-3.0, 3.0, 4)
         v_vals  = np.linspace(0.0, TAU, 16, endpoint=False)
-        # dr_vals = [0.0, 0.6, 1.2]   # signed 대신 radius 느낌으로
-        dr_vals = [0.0, 0.8]                          # 3 -> 2
+        dr_vals = [0.0, 0.6, 1.2]   # signed 대신 radius 느낌으로
+        # dr_vals = [0.0, 0.8]                          # 3 -> 2
 
         field_params = [(u, v, dr) for u in u_vals for v in v_vals for dr in dr_vals]
 
@@ -487,7 +452,6 @@ class ScrewNetAxisKeyboardLM(ThreeDScene):
                     # attract to radius r_cir
                     v_rad = -k_r * dr * rdir
 
-                    # (선택) 위상 결합까지 강제하려면 아래 추가:
                     #   u ≈ h*v + c  (c=0 가정)
                     # v_phase = -(u - h*v) * l  형태로 u를 맞춰도 꽤 잘 붙습니다.
                     v_phase = -0.8 * (u - h * v) * l if abs(h) > 1e-9 else 0.0 * l
@@ -610,6 +574,70 @@ class ScrewNetAxisKeyboardLM(ThreeDScene):
             )
         )
         self.add(blended_mouse_triad)
+
+
+
+        # ------------------------------------------------------------
+        # UI: external UDP target receiver and smoother
+        # ------------------------------------------------------------
+
+
+        import socket, threading, json
+        from collections import defaultdict
+
+        # --- construct() 안, trackers 만든 이후 ---
+        PORT = 5005
+        targets = defaultdict(lambda: None)
+        lock = threading.Lock()
+
+        def udp_listener():
+            sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            sock.bind(("127.0.0.1", PORT))
+            while True:
+                data, _ = sock.recvfrom(4096)
+                try:
+                    msg = json.loads(data.decode("utf-8"))
+                except Exception:
+                    continue
+                with lock:
+                    for k, v in msg.items():
+                        targets[k] = v
+
+        threading.Thread(target=udp_listener, daemon=True).start()
+
+        def apply_targets_updater(_, dt):
+            # dt 기반 smoothing(선택): 너무 튀면 부드럽게 따라가게
+            a = 1.0 - np.exp(-10.0 * dt)  # 10은 반응 속도(크면 더 빨리)
+            with lock:
+                t = dict(targets)
+
+            # mode는 즉시 반영하는 편이 보통 편함
+            if t.get("mode") is not None:
+                set_mode(int(round(t["mode"])))
+
+            # 연속 파라미터들
+            def lerp(cur, tgt):
+                return cur if tgt is None else (1 - a) * cur + a * float(tgt)
+
+            yaw.set_value(   lerp(yaw.get_value(),   t.get("yaw")))
+            pitch.set_value( lerp(pitch.get_value(), t.get("pitch")))
+            alpha.set_value( lerp(alpha.get_value(), t.get("alpha")))
+            beta.set_value(  lerp(beta.get_value(),  t.get("beta")))
+
+            # 필요하면 추가(예: omega, r_cir, k_r 등도 동일하게)
+            # omega = ...
+            # r_cir = ...
+
+        driver = Mobject().set_opacity(0)
+        driver.add_updater(apply_targets_updater)
+        self.add(driver)
+
+
+
+
+
+
+
 
         # ------------------------------------------------------------
         # HUD: show current l, m and controls
