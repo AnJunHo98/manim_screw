@@ -576,6 +576,106 @@ class ScrewNetAxisKeyboardLM(ThreeDScene):
         self.add(blended_mouse_triad)
 
 
+        def manifold_target_point(x_world: np.ndarray) -> np.ndarray:
+            """
+            현재 모드에 대응하는 manifold(구속면) 위에서
+            x_world(마우스 포인트)를 가장 자연스럽게 대응시키는 목표점(target)을 반환.
+            """
+            x = np.array(x_world, dtype=float).reshape(3)
+
+            l, u0, v0, p_star, _ = axis_state()
+            k = int(round(mode.get_value()))
+
+            # axis frame decomposition
+            r = x - p_star
+            u = float(np.dot(r, l))
+            r_perp = r - u * l
+
+            # 각도 v 계산(수직평면에서 u0, v0 좌표로)
+            a = float(np.dot(r_perp, u0))
+            b = float(np.dot(r_perp, v0))
+            v = np.arctan2(b, a)  # [-pi, pi]
+            if v < 0:
+                v += TAU          # [0, 2pi)
+
+            # ----------------------------
+            # Mode 1: Locked -> 점 p_star
+            # ----------------------------
+            if k == 1:
+                return p_star
+
+            # ----------------------------
+            # Mode 2: Revolute -> 원 (u = u_slice, rho = r_cir)
+            # ----------------------------
+            if k == 2:
+                u_t = u_slice.get_value()
+                return p_star + u_t * l + r_cir * (np.cos(v) * u0 + np.sin(v) * v0)
+
+            # ----------------------------
+            # Mode 3: Prismatic -> 축 직선 (rho = 0)
+            # ----------------------------
+            if k == 3:
+                return p_star + u * l
+
+            # ----------------------------
+            # Mode 4: Screw -> 헬릭스 (rho = r_cir, u ≈ h * v)
+            #   v는 마우스가 가리키는 각을 쓰고,
+            #   회전수를 unwrap해서 u(마우스의 축방향 성분)에 가장 가깝게 맞춤.
+            # ----------------------------
+            if k == 4:
+                th = theta.get_value()
+                dd = d.get_value()
+                h = (dd / th) if abs(th) > 1e-9 else 0.0
+
+                # h가 0이면 screw가 붕괴하므로(실질적으로 revolute/cylinder),
+                # 안전하게 원으로 fallback
+                if abs(h) < 1e-9:
+                    return p_star + u * l + r_cir * (np.cos(v) * u0 + np.sin(v) * v0)
+
+                # v를 unwrap 해서 u/h에 가장 가까운 turn 선택
+                kturn = int(np.round((u / h - v) / TAU))
+                v_unwrap = v + TAU * kturn
+                u_t = h * v_unwrap
+
+                return p_star + u_t * l + r_cir * (np.cos(v_unwrap) * u0 + np.sin(v_unwrap) * v0)
+
+            # fallback
+            return p_star
+
+
+        # ghost_triad = always_redraw(
+        #     lambda: pose_frame_mobject(
+        #         pos=manifold_target_point(self.mouse_point.get_center()),  # 목표점
+        #         R=np.eye(3),
+        #         axis_len=0.7,
+        #         stroke_width=7,
+        #         opacity=0.25,  # 반투명
+        #     )
+        # )
+        # self.add(ghost_triad)
+
+
+        ghost_triad = always_redraw(
+            lambda: (lambda l,u0,v0,p_star,_:
+                pose_frame_mobject(
+                    pos=manifold_target_point(self.mouse_point.get_center()),
+                    R=np.column_stack([u0, v0, l]),  # 축-기저 정렬
+                    axis_len=0.7,
+                    stroke_width=7,
+                    opacity=0.25,
+                )
+            )(*axis_state())
+        )
+        self.add(ghost_triad)
+
+        ghost_line = always_redraw(
+            lambda: DashedLine(
+                triad_anchor.get_center(),
+                manifold_target_point(self.mouse_point.get_center()),
+                dash_length=0.15,
+            ).set_stroke(width=2, opacity=0.35)
+        )
+        self.add(ghost_line)
 
         # ------------------------------------------------------------
         # UI: external UDP target receiver and smoother
