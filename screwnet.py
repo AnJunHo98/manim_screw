@@ -3,6 +3,8 @@
 
 from manimlib import *
 import numpy as np
+import matplotlib.pyplot as plt
+from collections import deque
 
 # ============================================================
 # Utils
@@ -676,6 +678,93 @@ class ScrewNetAxisKeyboardLM(ThreeDScene):
             ).set_stroke(width=2, opacity=0.35)
         )
         self.add(ghost_line)
+
+        # ------------------------------------------------------------
+        # Real-time matplotlib plots for poses and errors
+        # ------------------------------------------------------------
+        class PosePlotter:
+            def __init__(self, window_size=300):
+                self.window_size = window_size
+                self.t = deque(maxlen=window_size)
+                self.red = [deque(maxlen=window_size) for _ in range(3)]
+                self.proj = [deque(maxlen=window_size) for _ in range(3)]
+                self.blend = [deque(maxlen=window_size) for _ in range(3)]
+                self.err_red_proj = [deque(maxlen=window_size) for _ in range(3)]
+                self.err_blend_proj = [deque(maxlen=window_size) for _ in range(3)]
+
+                plt.ion()
+                self.fig, self.axes = plt.subplots(5, 1, sharex=True, figsize=(9, 11))
+                self.fig.suptitle("Pose Tracking (Realtime)")
+
+                titles = [
+                    "Red Ball Pose (XYZ)",
+                    "Projection Triad Pose (XYZ)",
+                    "Blended Triad Pose (XYZ)",
+                    "Error: Red Ball - Projection (XYZ)",
+                    "Error: Blended - Projection (XYZ)",
+                ]
+                self.lines = []
+                for ax, title in zip(self.axes, titles):
+                    ax.set_title(title)
+                    ax.set_ylabel("value")
+                    ax.grid(True, alpha=0.3)
+                    line_x, = ax.plot([], [], color="red", label="x")
+                    line_y, = ax.plot([], [], color="green", label="y")
+                    line_z, = ax.plot([], [], color="blue", label="z")
+                    ax.legend(loc="upper right")
+                    self.lines.append((line_x, line_y, line_z))
+                self.axes[-1].set_xlabel("time (s)")
+
+            def update(self, t_value, red_pos, proj_pos, blend_pos):
+                self.t.append(t_value)
+                for i in range(3):
+                    self.red[i].append(red_pos[i])
+                    self.proj[i].append(proj_pos[i])
+                    self.blend[i].append(blend_pos[i])
+                    self.err_red_proj[i].append(red_pos[i] - proj_pos[i])
+                    self.err_blend_proj[i].append(blend_pos[i] - proj_pos[i])
+
+                data_groups = [
+                    self.red,
+                    self.proj,
+                    self.blend,
+                    self.err_red_proj,
+                    self.err_blend_proj,
+                ]
+                t_list = list(self.t)
+                for (line_x, line_y, line_z), data in zip(self.lines, data_groups):
+                    line_x.set_data(t_list, list(data[0]))
+                    line_y.set_data(t_list, list(data[1]))
+                    line_z.set_data(t_list, list(data[2]))
+
+                for ax in self.axes:
+                    ax.relim()
+                    ax.autoscale_view()
+
+                self.fig.canvas.draw_idle()
+                self.fig.canvas.flush_events()
+
+        plotter = PosePlotter(window_size=300)
+        plot_time = 0.0
+        plot_accum = 0.0
+        plot_interval = 0.1
+
+        def plot_updater(_, dt):
+            nonlocal plot_time, plot_accum
+            plot_time += dt
+            plot_accum += dt
+            if plot_accum < plot_interval:
+                return
+            plot_accum = 0.0
+
+            red_pos = self.mouse_point.get_center()
+            proj_pos = manifold_target_point(self.mouse_point.get_center())
+            blend_pos = triad_anchor.get_center()
+            plotter.update(plot_time, red_pos, proj_pos, blend_pos)
+
+        plot_driver = Mobject().set_opacity(0)
+        plot_driver.add_updater(plot_updater)
+        self.add(plot_driver)
 
         # ------------------------------------------------------------
         # UI: external UDP target receiver and smoother
