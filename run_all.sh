@@ -7,7 +7,7 @@ set -e
 python ui.py &
 UI_PID=$!
 
-manimgl screwnet.py ScrewNetAxisMotionViz -p -ql &
+manimgl screwnet.py ScrewNetAxisKeyboardLM -p -ql &
 MANIM_PID=$!
 
 # Ctrl+C 시 두 프로세스 같이 종료
