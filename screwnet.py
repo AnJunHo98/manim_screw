@@ -683,7 +683,7 @@ class ScrewNetAxisKeyboardLM(ThreeDScene):
         # Real-time matplotlib plots for poses and errors
         # ------------------------------------------------------------
         class PosePlotter:
-            def __init__(self, window_size=300):
+            def __init__(self, window_size=50):
                 self.window_size = window_size
                 self.t = deque(maxlen=window_size)
                 self.red = [deque(maxlen=window_size) for _ in range(3)]
@@ -744,7 +744,7 @@ class ScrewNetAxisKeyboardLM(ThreeDScene):
                 self.fig.canvas.draw_idle()
                 self.fig.canvas.flush_events()
 
-        plotter = PosePlotter(window_size=300)
+        plotter = PosePlotter(window_size=25)
         plot_time = 0.0
         plot_accum = 0.0
         plot_interval = 0.1
@@ -796,7 +796,7 @@ class ScrewNetAxisKeyboardLM(ThreeDScene):
 
         def apply_targets_updater(_, dt):
             # dt 기반 smoothing(선택): 너무 튀면 부드럽게 따라가게
-            a = 1.0 - np.exp(-10.0 * dt)  # 10은 반응 속도(크면 더 빨리)
+            a = 1.0 - np.exp(-30.0 * dt)  # 10은 반응 속도(크면 더 빨리)
             with lock:
                 t = dict(targets)
 

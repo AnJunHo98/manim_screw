@@ -7,7 +7,7 @@ set -e
 python ui.py &
 UI_PID=$!
 
-manimgl screwnet.py ScrewNetAxisKeyboardLM -p -ql &
+manimgl screwnet.py ScrewNetAxisKeyboardLM -p --resolution 1024x768 &
 MANIM_PID=$!
 
 # Ctrl+C 시 두 프로세스 같이 종료
