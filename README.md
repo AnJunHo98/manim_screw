@@ -1,124 +1,83 @@
-<p align="center">
-    <a href="https://github.com/3b1b/manim">
-        <img src="https://raw.githubusercontent.com/3b1b/manim/master/logo/cropped.png">
-    </a>
-</p>
+# manim_screw
 
-[![pypi version](https://img.shields.io/pypi/v/manimgl?logo=pypi)](https://pypi.org/project/manimgl/)
-[![MIT License](https://img.shields.io/badge/license-MIT-blue.svg?style=flat)](http://choosealicense.com/licenses/mit/)
-[![Manim Subreddit](https://img.shields.io/reddit/subreddit-subscribers/manim.svg?color=ff4301&label=reddit&logo=reddit)](https://www.reddit.com/r/manim/)
-[![Manim Discord](https://img.shields.io/discord/581738731934056449.svg?label=discord&logo=discord)](https://discord.com/invite/bYCyhM9Kz2)
-[![docs](https://github.com/3b1b/manim/workflows/docs/badge.svg)](https://3b1b.github.io/manim/)
+Interactive ManimGL scenes that visualize screw axes and pose constraint fields, built on a fork of 3b1b/manim.
 
-Manim is an engine for precise programmatic animations, designed for creating explanatory math videos.
+## Overview
 
-Note, there are two versions of manim.  This repository began as a personal project by the author of [3Blue1Brown](https://www.3blue1brown.com/) for the purpose of animating those videos, with video-specific code available [here](https://github.com/3b1b/videos).  In 2020 a group of developers forked it into what is now the [community edition](https://github.com/ManimCommunity/manim/), with a goal of being more stable, better tested, quicker to respond to community contributions, and all around friendlier to get started with. See [this page](https://docs.manim.community/en/stable/faq/installation.html#different-versions) for more details.
+This repository is a fork of [3b1b/manim](https://github.com/3b1b/manim) (ManimGL, package `manimgl`). The `manimlib` package and the other upstream files are kept as in upstream (based on upstream commit `e529838`, October 2025). On top of that, this fork adds a few standalone, interactive 3D scripts for exploring joint constraints: a screw axis that can be switched between locked, revolute, prismatic and screw motion, and mouse-driven "Pose B" scenes that show guidance fields toward a constraint manifold around an axis through a fixed "Pose A".
 
-## Installation
-> [!Warning]
-> **WARNING:** These instructions are for ManimGL _only_. Trying to use these instructions to install [Manim Community/manim](https://github.com/ManimCommunity/manim) or instructions there to install this version will cause problems. You should first decide which version you wish to install, then only follow the instructions for your desired version.
+## What this fork adds
 
-> [!Note]
-> **Note**: To install manim directly through pip, please pay attention to the name of the installed package. This repository is ManimGL of 3b1b. The package name is `manimgl` instead of `manim` or `manimlib`. Please use `pip install manimgl` to install the version in this repository.
+| File | Scene | Description |
+| --- | --- | --- |
+| `screwnet.py` | `ScrewNetAxisKeyboardLM` | Screw axis given by a direction `l` and moment `m = p* × l`, controlled from the keyboard. A red ball follows the mouse and is projected onto the current constraint; a live matplotlib window ("Pose Tracking (Realtime)") plots the red-ball, projection and blended poses and their errors. Also listens for parameter updates over UDP on `127.0.0.1:5005`. |
+| `ui.py` | – | Tkinter control panel ("ScrewNet Control UI") with `yaw`, `pitch`, `alpha`, `beta` sliders and a mode selector (1 Locked, 2 Revolute, 3 Prismatic, 4 Screw); sends JSON over UDP to `127.0.0.1:5005`. |
+| `run_all.sh` | – | Starts `ui.py` and `screwnet.py` together; Ctrl+C stops both. |
+| `pose_test.py` | `PoseMouseLocalConstraintField` | Pose B follows the mouse. Shows a constraint-only local guidance field for a cylinder-plane constraint (distance to axis = `L`, axial coordinate = `s_des`) and the projection of Pose B onto the constraint manifold. |
+| `pose_fixed.py` | `PoseMouseLocalConstraintField` | Same setup with an A-centered guidance field (radial + axial + tangential/orbit terms) that is blended into the mouse-following motion as Pose B gets close to the ring. |
+| `pose_mixed.py` | `PoseMouseLocalConstraintField` | Shows both the A-centered guidance field and a B-centered constraint-only local field. |
+| `pose_screw.py` | `PoseMouseLocalConstraintField` | Screw-joint constraint: radius `rho = L` and helical constraint `s = s0 + pitch * phi` (`pitch = 0` is revolute; a very large pitch is treated as prismatic). |
+| `RUN_CMD.md` | – | Notes with run commands. |
 
-Manim runs on Python 3.7 or higher.
+### Controls
 
-System requirements are [FFmpeg](https://ffmpeg.org/), [OpenGL](https://www.opengl.org/) and [LaTeX](https://www.latex-project.org) (optional, if you want to use LaTeX).
-For Linux, [Pango](https://pango.org) along with its development headers are required. See instruction [here](https://github.com/ManimCommunity/ManimPango#building).
+`screwnet.py`:
 
+- `1`–`4` (top row or numpad): mode 1 Locked, 2 Revolute, 3 Prismatic, 4 Screw
+- `J` / `L`: axis yaw; `I` / `K`: axis pitch
+- `C` / `Z` and `S` / `X`: move the axis position (`alpha` / `beta`) in the plane perpendicular to it
 
-### Directly
+`pose_mixed.py`, `pose_screw.py`: `E` / `Q` raise / lower the mouse target's z coordinate.
 
-```sh
-# Install manimgl
-pip install manimgl
+## Requirements and installation
 
-# Try it out
-manimgl
-```
+Install this fork in editable mode from the repository root (this installs the `manimgl` command from the local `manimlib`):
 
-For more options, take a look at the [Using manim](#using-manim) sections further below.
-
-If you want to hack on manimlib itself, clone this repository and in that directory execute:
-
-```sh
-# Install manimgl
+```bash
 pip install -e .
-
-# Try it out
-manimgl example_scenes.py OpeningManimExample
-# or
-manim-render example_scenes.py OpeningManimExample
 ```
 
-### Directly (Windows)
+ManimGL's system requirements still apply (FFmpeg, OpenGL, and on Linux Pango with its development headers); see the [upstream installation guide](https://github.com/3b1b/manim#installation). `screwnet.py` uses matplotlib (listed in `requirements.txt`) and `ui.py` uses Tkinter.
 
-1. [Install FFmpeg](https://www.wikihow.com/Install-FFmpeg-on-Windows).
-2. Install a LaTeX distribution. [MiKTeX](https://miktex.org/download) is recommended.
-3. Install the remaining Python packages.
-    ```sh
-    git clone https://github.com/3b1b/manim.git
-    cd manim
-    pip install -e .
-    manimgl example_scenes.py OpeningManimExample
-    ```
+## Usage
 
-### Mac OSX
+Each script defines a single scene. Examples (flags as used in `RUN_CMD.md`):
 
-1. Install FFmpeg, LaTeX in terminal using homebrew.
-    ```sh
-    brew install ffmpeg mactex
-    ```
-
-2. If you are using an ARM-based processor, install Cairo. 
-    ```sh
-    arch -arm64 brew install pkg-config cairo
-    ```
-   
-3. Install latest version of manim using these command.
-    ```sh
-    git clone https://github.com/3b1b/manim.git
-    cd manim
-    pip install -e .
-    manimgl example_scenes.py OpeningManimExample (make sure to add manimgl to path first.)
-    ```
-
-## Anaconda Install
-
-1. Install LaTeX as above.
-2. Create a conda environment using `conda create -n manim python=3.8`.
-3. Activate the environment using `conda activate manim`.
-4. Install manimgl using `pip install -e .`.
-
-
-## Using manim
-Try running the following:
-```sh
-manimgl example_scenes.py OpeningManimExample
+```bash
+manimgl pose_test.py  PoseMouseLocalConstraintField -p -ql
+manimgl pose_fixed.py PoseMouseLocalConstraintField -p -ql
+manimgl pose_mixed.py PoseMouseLocalConstraintField -p -ql
+manimgl pose_screw.py PoseMouseLocalConstraintField -p -ql
+manimgl screwnet.py   ScrewNetAxisKeyboardLM -p -ql
 ```
-This should pop up a window playing a simple scene.
 
-Look through the [example scenes](https://3b1b.github.io/manim/getting_started/example_scenes.html) to see examples of the library's syntax, animation types and object types. In the [3b1b/videos](https://github.com/3b1b/videos) repo, you can see all the code for 3blue1brown videos, though code from older videos may not be compatible with the most recent version of manim. The readme of that repo also outlines some details for how to set up a more interactive workflow, as shown in [this manim demo video](https://www.youtube.com/watch?v=rbu7Zu5X1zI) for example.
+`-p` is presenter mode (the scene stays paused at `wait` calls), `-q` is quiet and `-l` renders at 480p. Because each file has only one scene, manimgl runs it even when another name is passed, which is why the class names in `RUN_CMD.md` (e.g. `CylinderPlaneConstraint`) also work.
 
-When running in the CLI, some useful flags include:
-* `-w` to write the scene to a file
-* `-o` to write the scene to a file and open the result
-* `-s` to skip to the end and just show the final frame.
-    * `-so` will save the final frame to an image and show it
-* `-n <number>` to skip ahead to the `n`'th animation of a scene.
-* `-f` to make the playback window fullscreen
+To run the ScrewNet scene together with the slider UI:
 
-Take a look at custom_config.yml for further configuration.  To add your customization, you can either edit this file, or add another file by the same name "custom_config.yml" to whatever directory you are running manim from.  For example [this is the one](https://github.com/3b1b/videos/blob/master/custom_config.yml) for 3blue1brown videos.  There you can specify where videos should be output to, where manim should look for image files and sounds you want to read in, and other defaults regarding style and video quality.
+```bash
+./run_all.sh
+```
 
-### Documentation
-Documentation is in progress at [3b1b.github.io/manim](https://3b1b.github.io/manim/). And there is also a Chinese version maintained by [**@manim-kindergarten**](https://manim.org.cn): [docs.manim.org.cn](https://docs.manim.org.cn/) (in Chinese).
+This runs `python ui.py` and `manimgl screwnet.py ScrewNetAxisKeyboardLM -p --resolution 1024x768`.
 
-[manim-kindergarten](https://github.com/manim-kindergarten/) wrote and collected some useful extra classes and some codes of videos in [manim_sandbox repo](https://github.com/manim-kindergarten/manim_sandbox).
+## Repository layout
 
+- `screwnet.py`, `ui.py`, `run_all.sh`, `pose_*.py`, `RUN_CMD.md`: this fork's additions (see above)
+- `manimlib/`: the ManimGL library (upstream)
+- `example_scenes.py`: upstream ManimGL example scenes
+- `docs/`: upstream ManimGL documentation sources
+- `logo/`: upstream logo files
+- `setup.py`, `setup.cfg`, `pyproject.toml`, `requirements.txt`, `MANIFEST.in`: upstream packaging files (package `manimgl`)
 
-## Contributing
-Is always welcome.  As mentioned above, the [community edition](https://github.com/ManimCommunity/manim) has the most active ecosystem for contributions, with testing and continuous integration, but pull requests are welcome here too.  Please explain the motivation for a given change and examples of its effect.
+## ManimGL documentation
 
+For general ManimGL usage, see the upstream [README](https://github.com/3b1b/manim) and the [documentation](https://3b1b.github.io/manim/).
 
-## License
-This project falls under the MIT license.
+## Status
+
+Experimental visualization scripts; last updated in January 2026. Not synced with later upstream changes.
+
+## License and credits
+
+ManimGL is developed by 3Blue1Brown ([3b1b/manim](https://github.com/3b1b/manim)). This fork keeps upstream's MIT License; see [LICENSE.md](LICENSE.md).
