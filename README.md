@@ -51,7 +51,7 @@ manimgl pose_screw.py PoseMouseLocalConstraintField -p -ql
 manimgl screwnet.py   ScrewNetAxisKeyboardLM -p -ql
 ```
 
-`-p` is presenter mode (the scene stays paused at `wait` calls), `-q` is quiet and `-l` renders at 480p. Because each file has only one scene, manimgl runs it even when another name is passed, which is why the class names in `RUN_CMD.md` (e.g. `CylinderPlaneConstraint`) also work.
+`-p` is presenter mode (the scene stays paused at `wait` calls), `-q` is quiet and `-l` renders at 480p.
 
 To run the ScrewNet scene together with the slider UI:
 
